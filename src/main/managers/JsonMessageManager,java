@@ -1,0 +1,225 @@
+package com.ignluc4s.spiritautomessage.managers;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.ignluc4s.spiritautomessage.SpiritAutoMessage;
+import net.md_5.bungee.api.chat.BaseComponent;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.HoverEvent;
+import net.md_5.bungee.api.chat.TextComponent;
+import org.bukkit.ChatColor;
+import org.bukkit.entity.Player;
+
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+
+public class JsonMessageManager {
+
+    private final SpiritAutoMessage plugin;
+    private final Gson gson;
+    private Map<String, JsonObject> messages;
+    private File messagesFile;
+
+    public JsonMessageManager(SpiritAutoMessage plugin) {
+        this.plugin = plugin;
+        this.gson = new Gson();
+        this.messages = new HashMap<>();
+    }
+
+    public void loadMessages() {
+        messagesFile = new File(plugin.getDataFolder(), "json-messages.json");
+
+        if (!messagesFile.exists()) {
+            plugin.saveResource("json-messages.json", false);
+        }
+
+        try (Reader reader = new InputStreamReader(new FileInputStream(messagesFile), StandardCharsets.UTF_8)) {
+            JsonObject root = new JsonParser().parse(reader).getAsJsonObject();
+            messages.clear();
+
+            // Use entrySet() for compatibility with older Gson versions (1.8)
+            for (Map.Entry<String, com.google.gson.JsonElement> entry : root.entrySet()) {
+                messages.put(entry.getKey(), entry.getValue().getAsJsonObject());
+            }
+
+            plugin.getLogger().info("Loaded " + messages.size() + " JSON messages!");
+        } catch (Exception e) {
+            plugin.getLogger().severe("Failed to load json-messages.json: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    public void sendMessage(Player player, String messageKey) {
+        JsonObject messageObject = messages.get(messageKey);
+
+        if (messageObject == null) {
+            plugin.getLogger().warning("Message key not found: " + messageKey);
+            return;
+        }
+
+        try {
+            TextComponent message = buildCompleteMessage(messageObject, player);
+            player.spigot().sendMessage(message);
+        } catch (Exception e) {
+            plugin.getLogger().severe("Failed to send JSON message: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private TextComponent buildCompleteMessage(JsonObject messageObject, Player player) {
+        // Build the base text component
+        TextComponent baseComponent = buildTextComponent(messageObject, player);
+        
+        // Handle "extra" field for additional components
+        if (messageObject.has("extra")) {
+            JsonArray extraArray = messageObject.getAsJsonArray("extra");
+            for (int i = 0; i < extraArray.size(); i++) {
+                JsonObject extraObject = extraArray.get(i).getAsJsonObject();
+                TextComponent extraComponent = buildTextComponent(extraObject, player);
+                baseComponent.addExtra(extraComponent);
+            }
+        }
+        
+        return baseComponent;
+    }
+
+    public void broadcastMessage(String messageKey) {
+        for (Player player : plugin.getServer().getOnlinePlayers()) {
+            sendMessage(player, messageKey);
+        }
+    }
+
+    private TextComponent buildTextComponent(JsonObject messageObject, Player player) {
+        // Get and translate text
+        String text = messageObject.get("text").getAsString();
+        text = replacePlaceholders(text, player);
+        text = ChatColor.translateAlternateColorCodes('&', text);
+        
+        TextComponent component = new TextComponent(text);
+        
+        // Handle color formatting from JSON
+        if (messageObject.has("color")) {
+            String color = messageObject.get("color").getAsString();
+            component.setColor(net.md_5.bungee.api.ChatColor.valueOf(color.toUpperCase()));
+        }
+        
+        // Handle bold formatting
+        if (messageObject.has("bold")) {
+            component.setBold(messageObject.get("bold").getAsBoolean());
+        }
+        
+        // Handle italic formatting
+        if (messageObject.has("italic")) {
+            component.setItalic(messageObject.get("italic").getAsBoolean());
+        }
+        
+        // Handle underlined formatting
+        if (messageObject.has("underlined")) {
+            component.setUnderlined(messageObject.get("underlined").getAsBoolean());
+        }
+        
+        // Handle strikethrough formatting
+        if (messageObject.has("strikethrough")) {
+            component.setStrikethrough(messageObject.get("strikethrough").getAsBoolean());
+        }
+        
+        // Handle obfuscated formatting
+        if (messageObject.has("obfuscated")) {
+            component.setObfuscated(messageObject.get("obfuscated").getAsBoolean());
+        }
+
+        // Handle click event
+        if (messageObject.has("clickEvent")) {
+            JsonObject clickEvent = messageObject.getAsJsonObject("clickEvent");
+            String action = clickEvent.get("action").getAsString().toLowerCase();
+            String value = replacePlaceholders(clickEvent.get("value").getAsString(), player);
+
+            ClickEvent.Action clickAction;
+            switch (action) {
+                case "open_url":
+                    clickAction = ClickEvent.Action.OPEN_URL;
+                    break;
+                case "run_command":
+                    clickAction = ClickEvent.Action.RUN_COMMAND;
+                    break;
+                case "suggest_command":
+                    clickAction = ClickEvent.Action.SUGGEST_COMMAND;
+                    break;
+                case "change_page":
+                    clickAction = ClickEvent.Action.CHANGE_PAGE;
+                    break;
+                case "copy_to_clipboard":
+                    // COPY_TO_CLIPBOARD only exists in 1.15+
+                    // Use valueOf to avoid compilation errors on older versions
+                    try {
+                        clickAction = ClickEvent.Action.valueOf("COPY_TO_CLIPBOARD");
+                    } catch (IllegalArgumentException e) {
+                        // Older versions don't have COPY_TO_CLIPBOARD
+                        clickAction = ClickEvent.Action.SUGGEST_COMMAND;
+                    }
+                    break;
+                default:
+                    clickAction = ClickEvent.Action.SUGGEST_COMMAND;
+            }
+
+            component.setClickEvent(new ClickEvent(clickAction, value));
+        }
+
+        // Handle hover event
+        if (messageObject.has("hoverEvent")) {
+            JsonObject hoverEvent = messageObject.getAsJsonObject("hoverEvent");
+            String action = hoverEvent.get("action").getAsString().toLowerCase();
+
+            if (action.equals("show_text")) {
+                String hoverText;
+                
+                if (hoverEvent.has("value")) {
+                    // Single line hover text
+                    hoverText = replacePlaceholders(hoverEvent.get("value").getAsString(), player);
+                    hoverText = ChatColor.translateAlternateColorCodes('&', hoverText);
+                } else if (hoverEvent.has("contents")) {
+                    // Handle both string and array for contents
+                    if (hoverEvent.get("contents").isJsonArray()) {
+                        JsonArray contents = hoverEvent.getAsJsonArray("contents");
+                        StringBuilder sb = new StringBuilder();
+                        for (int i = 0; i < contents.size(); i++) {
+                            if (i > 0) sb.append("\n");
+                            String line = replacePlaceholders(contents.get(i).getAsString(), player);
+                            sb.append(ChatColor.translateAlternateColorCodes('&', line));
+                        }
+                        hoverText = sb.toString();
+                    } else {
+                        // Single string in contents
+                        hoverText = replacePlaceholders(hoverEvent.get("contents").getAsString(), player);
+                        hoverText = ChatColor.translateAlternateColorCodes('&', hoverText);
+                    }
+                } else {
+                    hoverText = "";
+                }
+
+                // Create BaseComponent array for hover text to properly support color codes
+                BaseComponent[] hoverComponents = TextComponent.fromLegacyText(hoverText);
+                component.setHoverEvent(new HoverEvent(
+                    HoverEvent.Action.SHOW_TEXT,
+                    hoverComponents
+                ));
+            }
+        }
+
+        return component;
+    }
+
+    private String replacePlaceholders(String text, Player player) {
+        return text
+            .replace("%player%", player.getName())
+            .replace("%displayname%", player.getDisplayName());
+    }
+
+    public boolean hasMessage(String messageKey) {
+        return messages.containsKey(messageKey);
+    }
+}
