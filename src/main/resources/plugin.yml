@@ -1,0 +1,16 @@
+name: SpiritAutoMessage
+version: ${project.version}
+main: com.ignluc4s.spiritautomessage.SpiritAutoMessage
+api-version: 1.13
+author: ignLuc4s
+description: Advanced auto-message plugin with JSON support
+
+commands:
+  spiritautomessage:
+    description: Main plugin command
+    aliases: [sam, automessage]
+    usage: /<command> reload
+  site:
+    description: Show server website
+  discord:
+    description: Show Discord invite
