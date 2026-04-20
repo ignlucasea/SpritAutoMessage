@@ -1,0 +1,105 @@
+package com.ignluc4s.spiritautomessage;
+
+import com.ignluc4s.spiritautomessage.commands.CustomMessageCommand;
+import com.ignluc4s.spiritautomessage.commands.MainCommand;
+import com.ignluc4s.spiritautomessage.listeners.PlayerJoinListener;
+import com.ignluc4s.spiritautomessage.listeners.PlayerQuitListener;
+import com.ignluc4s.spiritautomessage.managers.AutoMessageManager;
+import com.ignluc4s.spiritautomessage.managers.ConfigManager;
+import com.ignluc4s.spiritautomessage.managers.JsonMessageManager;
+import com.ignluc4s.spiritautomessage.managers.PlayerDataManager;
+import org.bukkit.plugin.java.JavaPlugin;
+
+public class SpiritAutoMessage extends JavaPlugin {
+
+    private ConfigManager configManager;
+    private JsonMessageManager jsonMessageManager;
+    private AutoMessageManager autoMessageManager;
+    private PlayerDataManager playerDataManager;
+
+    @Override
+    public void onEnable() {
+        // Initialize managers
+        this.configManager = new ConfigManager(this);
+        this.jsonMessageManager = new JsonMessageManager(this);
+        this.playerDataManager = new PlayerDataManager(this);
+        this.autoMessageManager = new AutoMessageManager(this);
+
+        // Load configurations
+        configManager.loadConfig();
+        jsonMessageManager.loadMessages();
+        playerDataManager.loadData();
+
+        // Register listeners
+        getServer().getPluginManager().registerEvents(new PlayerJoinListener(this), this);
+        getServer().getPluginManager().registerEvents(new PlayerQuitListener(this), this);
+
+        // Register commands
+        getCommand("spiritautomessage").setExecutor(new MainCommand(this));
+        registerCustomCommands();
+
+        // Start auto-message task
+        autoMessageManager.startTask();
+
+        getLogger().info("SpiritAutoMessage has been enabled!");
+    }
+
+    @Override
+    public void onDisable() {
+        // Stop auto-message task
+        if (autoMessageManager != null) {
+            autoMessageManager.stopTask();
+        }
+
+        // Save player data
+        if (playerDataManager != null) {
+            playerDataManager.saveData();
+        }
+
+        getLogger().info("SpiritAutoMessage has been disabled!");
+    }
+
+    private void registerCustomCommands() {
+        if (!configManager.getConfig().contains("commands")) {
+            return;
+        }
+
+        for (String key : configManager.getConfig().getConfigurationSection("commands").getKeys(false)) {
+            String command = configManager.getConfig().getString("commands." + key + ".command");
+            String message = configManager.getConfig().getString("commands." + key + ".message");
+
+            if (command != null && message != null) {
+                try {
+                    getCommand(command).setExecutor(new CustomMessageCommand(this, message));
+                } catch (Exception e) {
+                    getLogger().warning("Failed to register command: " + command + ". Make sure it's defined in plugin.yml");
+                }
+            }
+        }
+    }
+
+    public void reload() {
+        autoMessageManager.stopTask();
+        configManager.loadConfig();
+        jsonMessageManager.loadMessages();
+        playerDataManager.loadData();
+        registerCustomCommands();
+        autoMessageManager.startTask();
+    }
+
+    public ConfigManager getConfigManager() {
+        return configManager;
+    }
+
+    public JsonMessageManager getJsonMessageManager() {
+        return jsonMessageManager;
+    }
+
+    public AutoMessageManager getAutoMessageManager() {
+        return autoMessageManager;
+    }
+
+    public PlayerDataManager getPlayerDataManager() {
+        return playerDataManager;
+    }
+}
