@@ -1,0 +1,111 @@
+package com.ignluc4s.spiritautomessage.managers;
+
+import com.ignluc4s.spiritautomessage.SpiritAutoMessage;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
+public class PlayerDataManager {
+
+    private final SpiritAutoMessage plugin;
+    private File dataFile;
+    private FileConfiguration data;
+    private Set<UUID> firstTimeJoins;
+    private Map<UUID, String> previousServers;
+
+    public PlayerDataManager(SpiritAutoMessage plugin) {
+        this.plugin = plugin;
+        this.firstTimeJoins = new HashSet<>();
+        this.previousServers = new HashMap<>();
+    }
+
+    public void loadData() {
+        dataFile = new File(plugin.getDataFolder(), "playerdata.yml");
+
+        if (!dataFile.exists()) {
+            try {
+                dataFile.createNewFile();
+            } catch (IOException e) {
+                plugin.getLogger().severe("Failed to create playerdata.yml: " + e.getMessage());
+            }
+        }
+
+        data = YamlConfiguration.loadConfiguration(dataFile);
+        firstTimeJoins.clear();
+        previousServers.clear();
+
+        // Load first-time joins
+        if (data.contains("first-time-joins")) {
+            for (String uuidString : data.getStringList("first-time-joins")) {
+                try {
+                    firstTimeJoins.add(UUID.fromString(uuidString));
+                } catch (IllegalArgumentException e) {
+                    plugin.getLogger().warning("Invalid UUID in playerdata.yml: " + uuidString);
+                }
+            }
+        }
+
+        // Load previous servers
+        if (data.contains("previous-servers")) {
+            for (String key : data.getConfigurationSection("previous-servers").getKeys(false)) {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    String server = data.getString("previous-servers." + key);
+                    previousServers.put(uuid, server);
+                } catch (IllegalArgumentException e) {
+                    plugin.getLogger().warning("Invalid UUID in previous-servers: " + key);
+                }
+            }
+        }
+    }
+
+    public void saveData() {
+        if (data == null || dataFile == null) {
+            return;
+        }
+
+        // Save first-time joins
+        java.util.List<String> uuidStrings = new java.util.ArrayList<>();
+        for (UUID uuid : firstTimeJoins) {
+            uuidStrings.add(uuid.toString());
+        }
+        data.set("first-time-joins", uuidStrings);
+
+        // Save previous servers
+        data.set("previous-servers", null); // Clear old data
+        for (Map.Entry<UUID, String> entry : previousServers.entrySet()) {
+            data.set("previous-servers." + entry.getKey().toString(), entry.getValue());
+        }
+
+        try {
+            data.save(dataFile);
+        } catch (IOException e) {
+            plugin.getLogger().severe("Failed to save playerdata.yml: " + e.getMessage());
+        }
+    }
+
+    public boolean isFirstTimeJoin(UUID playerUUID) {
+        return !firstTimeJoins.contains(playerUUID);
+    }
+
+    public void markAsJoined(UUID playerUUID) {
+        firstTimeJoins.add(playerUUID);
+        saveData();
+    }
+
+    public String getPreviousServer(UUID playerUUID) {
+        return previousServers.get(playerUUID);
+    }
+
+    public void setPreviousServer(UUID playerUUID, String serverName) {
+        previousServers.put(playerUUID, serverName);
+        saveData();
+    }
+}
