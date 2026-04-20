@@ -1,0 +1,107 @@
+{
+  "site": {
+    "text": "§7Server's website: ",
+    "extra": [
+      {
+        "text": "§a§lClick me!",
+        "clickEvent": {
+          "action": "open_url",
+          "value": "https://spirit-mc.com"
+        },
+        "hoverEvent": {
+          "action": "show_text",
+          "contents": "§aClick to open!"
+        }
+      }
+    ]
+  },
+  "discord": {
+    "text": "§7Join our Discord: ",
+    "extra": [
+      {
+        "text": "§9§lDiscord",
+        "clickEvent": {
+          "action": "open_url",
+          "value": "https://discord.gg/spirit"
+        },
+        "hoverEvent": {
+          "action": "show_text",
+          "contents": "§9Click to join our Discord!"
+        }
+      }
+    ]
+  },
+  "first-time": {
+    "text": "§a§l» §eWelcome to the server for the first time, ",
+    "extra": [
+      {
+        "text": "%player%",
+        "color": "gold",
+        "bold": true
+      },
+      {
+        "text": "§e!"
+      }
+    ]
+  },
+  "default-join": {
+    "text": "§a§l» §7Welcome back, ",
+    "extra": [
+      {
+        "text": "%player%",
+        "color": "aqua"
+      },
+      {
+        "text": "§7!"
+      }
+    ]
+  },
+  "msg1": {
+    "text": "§8[§6Spirit§8] §7Remember to vote for the server daily!",
+    "extra": [
+      {
+        "text": " §e§l[VOTE]",
+        "clickEvent": {
+          "action": "open_url",
+          "value": "https://spirit-mc.com/vote"
+        },
+        "hoverEvent": {
+          "action": "show_text",
+          "contents": "§eClick to vote!"
+        }
+      }
+    ]
+  },
+  "msg2": {
+    "text": "§8[§6Spirit§8] §7Follow us on Twitter for updates!\n§7Stay connected with our community!",
+    "extra": [
+      {
+        "text": " §b§l[FOLLOW]",
+        "clickEvent": {
+          "action": "open_url",
+          "value": "https://twitter.com/spiritmc"
+        },
+        "hoverEvent": {
+          "action": "show_text",
+          "contents": "§bClick to follow!"
+        }
+      }
+    ]
+  },
+  "msg3": {
+    "text": "§8[§6Spirit§8] §7Check out our store for exclusive perks!",
+    "extra": [
+      {
+        "text": " §d§l[STORE]",
+        "clickEvent": {
+          "action": "open_url",
+          "value": "https://store.spirit-mc.com"
+        },
+        "hoverEvent": {
+          "action": "show_text",
+          "contents": "§dClick to visit the store!"
+        }
+      }
+    ]
+  }
+}
