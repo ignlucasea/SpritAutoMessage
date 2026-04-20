@@ -1,0 +1,24 @@
+# SpiritAutoMessage Configuration
+
+# Prefix for plugin messages (supports color codes with &)
+prefix: "&8[&6Spirit&8] &7"
+
+commands:
+  site:
+    command: "site"
+    message: site
+  discord:
+    command: "discord"
+    message: discord
+
+auto-messages:
+  enabled: true
+  messages: [msg1, msg2, msg3]
+  randomize: true # Messages are selected randomly
+  cooldown: 120 # seconds
+
+join-messages:
+  enabled: true
+  first-time: first-time
+  default: default-join # Not shown if it's the player's first time
+  show-when-joined-from: "" # Only show welcome message if player joins from specific server (leave empty to show always)
